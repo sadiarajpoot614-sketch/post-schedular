@@ -14,9 +14,9 @@ An AI-powered Instagram content scheduling and automation project built with **n
 
 ## Project Files
 
-* `n8n/INSTAGRAM POST.json` — Complete n8n automation workflow
+*   INSTAGRAM POST.json` — Complete n8n automation workflow
 *   Guide.md — Project documentation
-* `n8n/SCREEN SHOT` — Workflow screenshots
+*   SCREEN SHOT` — Workflow screenshots
 
 ## Technologies
 
