@@ -1,0 +1,583 @@
+{
+  "name": "INSTAGRAM POST",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1264,
+        112
+      ],
+      "id": "aa915482-3870-4c74-9713-7c61e1c6ed39",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "22db3ecc-6369-41df-a5a2-1ef2f7fa8b75",
+              "name": "platform",
+              "value": "instagram",
+              "type": "string"
+            },
+            {
+              "id": "f600191f-7d16-4576-878b-c09c42bf45bb",
+              "name": "topic",
+              "value": "AI Automation",
+              "type": "string"
+            },
+            {
+              "id": "34374f93-0011-4792-b5c8-b99db889ea3c",
+              "name": "tone",
+              "value": "professional",
+              "type": "string"
+            },
+            {
+              "id": "62ae2bad-60fd-4241-b4b0-573ad08dce1f",
+              "name": "keywords",
+              "value": "AI, automation, productivity",
+              "type": "string"
+            },
+            {
+              "id": "9d0e2fdc-aa3b-42f9-ba1d-0ebf116a8a33",
+              "name": "=imageUrl",
+              "value": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQHPAPFMBzAUlO30RCrNLk12yEbjAUTHbXariq6ZFzqv8IVPdGXsLAZ3ep8&s=10",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "6967f99b-684c-407a-b25c-a22dc2489231",
+      "name": "Select Platform",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -1104,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert social media content creator.\n\nPlatform: {{$json.platform}}\nTopic: {{$json.topic}}\nTone: {{$json.tone}}\nKeywords: {{$json.keywords}}\n\nGenerate:\n1. A catchy caption.\n2. Exactly 5 hashtags.\n3. A short CTA.\n\nReturn only valid JSON, no markdown fences, no extra text:\n\n{\n  \"caption\": \"...\",\n  \"hashtags\": \"#AI #Automation #Productivity #Tech #Innovation\",\n  \"cta\": \"Follow us for more AI updates!\"\n}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -880,
+        96
+      ],
+      "id": "205a26e1-6629-409e-819b-52e3ccdc1864",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "maxTokensToSample": 5000,
+          "temperature": 0.7
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        256
+      ],
+      "id": "23962aa0-7d28-48fc-8f3d-937a9233b7bf",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Kdt4lS4JYJF9YO6L",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Defensive parse: strip markdown code fences if the LLM wrapped its JSON in ```json ... ```\nlet raw = $node[\"Basic LLM Chain\"].json.text.trim();\nraw = raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim();\n\nlet data;\ntry {\n  data = JSON.parse(raw);\n} catch (e) {\n  throw new Error('Basic LLM Chain did not return valid JSON. Raw output: ' + raw);\n}\n\nconst caption = data.caption;\nconst hashtags = data.hashtags;\nconst cta = data.cta;\n\nconst finalPost = caption + \"\\n\\n\" + hashtags + \"\\n\\n\" + cta;\n\nreturn [\n  {\n    json: {\n      platform: $node[\"Select Platform\"].json.platform,\n      imageUrl: $node[\"Select Platform\"].json.imageUrl,\n      caption,\n      hashtags,\n      cta,\n      finalPost,\n      limit: 2200\n    }\n  }\n];"
+      },
+      "id": "9125e4f8-d23f-4995-8c8f-e0b044e0b73d",
+      "name": "Merge Content & Check Limit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "too-long",
+              "leftValue": "={{ $json.finalPost.length }}",
+              "rightValue": "={{ $json.limit }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "eabcbb81-1432-4e05-9ff3-d659d89afe02",
+      "name": "Too Long?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ contents: [ { parts: [ { text: \"Shorten this social media post to under \" + $json.limit + \" characters while keeping the key message and hashtags:\\n\\n\" + $json.finalPost } ] } ] }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "da5cbd64-3b46-4320-8198-caa94f31acc5",
+      "name": "Gemini - Shorten",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "F4nEfb9iPxQJAAMg",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "platform",
+              "name": "platform",
+              "value": "={{ $('Merge Content & Check Limit').item.json.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "imageUrl",
+              "name": "imageUrl",
+              "value": "={{ $('Merge Content & Check Limit').item.json.imageUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "finalText",
+              "name": "finalText",
+              "value": "={{ $json.candidates[0].content.parts[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9f2d07ca-76ca-45d3-a80d-5f652045790b",
+      "name": "Final Content (Shortened)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "platform",
+              "name": "platform",
+              "value": "={{ $json.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "imageUrl",
+              "name": "imageUrl",
+              "value": "={{ $json.imageUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "finalText",
+              "name": "finalText",
+              "value": "={{ $json.finalPost }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dafc12ef-7a78-45cc-ab64-d9d12a828b38",
+      "name": "Final Content",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        0,
+        224
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1d2f1bfc-39a8-4119-b27e-2db939775014",
+      "name": "Merge Final Content",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v23.0/17841439384790740/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $json.imageUrl }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.finalText }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "191e8333-bd68-437e-98c5-947fef07e472",
+      "name": "IG - Create Container",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        112
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "4B3qiOKCThRkrxAp",
+          "name": "Facebook Graph account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v23.0/17841439384790740/media_publish",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9cae6f3f-239d-4828-aa67-af3ac8884b3f",
+      "name": "IG - Publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        112
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "4B3qiOKCThRkrxAp",
+          "name": "Facebook Graph account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "id": "105e04ab-f7d3-4efb-aa42-4d7e4345427b",
+      "name": "Merge Publish Errors",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        896,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "raoali7464@gmail.com",
+        "subject": "Instagram post published successfully",
+        "emailType": "text",
+        "message": "=Your Instagram post has been published successfully.\n\nCaption used:\n{{ $('Merge Final Content').item.json.finalText }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        112
+      ],
+      "id": "afcac77a-2228-4826-8b75-2a3f0a94313f",
+      "name": "success node",
+      "webhookId": "1a9641bc-e85f-4862-b50a-c1d1567a7b45",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "K3wIIsEfzB8VPWlU",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "=raoali7464@gmail.com",
+        "subject": "Instagram post publish FAILED....",
+        "emailType": "text",
+        "message": "Publishing to Instagram failed. Please check the n8n execution log for the 'IG - Create Container' / 'IG - Publish' node error details.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        352
+      ],
+      "id": "989dc36a-5140-4ac4-ac19-6de648216457",
+      "name": "failure node",
+      "webhookId": "522b8480-17c4-420a-aab7-5ef5b7f3aa92",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "K3wIIsEfzB8VPWlU",
+          "name": "Gmail account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Select Platform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Platform": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Content & Check Limit": {
+      "main": [
+        [
+          {
+            "node": "Too Long?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Too Long?": {
+      "main": [
+        [
+          {
+            "node": "Gemini - Shorten",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini - Shorten": {
+      "main": [
+        [
+          {
+            "node": "Final Content (Shortened)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Content (Shortened)": {
+      "main": [
+        [
+          {
+            "node": "Merge Final Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Final Content": {
+      "main": [
+        [
+          {
+            "node": "Merge Final Content",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Final Content": {
+      "main": [
+        [
+          {
+            "node": "IG - Create Container",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG - Create Container": {
+      "main": [
+        [
+          {
+            "node": "IG - Publish",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Publish Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IG - Publish": {
+      "main": [
+        [
+          {
+            "node": "success node",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Publish Errors",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Publish Errors": {
+      "main": [
+        [
+          {
+            "node": "failure node",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Merge Content & Check Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "02b254d5-a85d-41b0-93ad-c7d8778e6b67",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "571a284e135200ad756b4392e691c341f97ab976804effb792f889f5eb23da09"
+  },
+  "nodeGroups": [],
+  "id": "eAtxuTxspI6fUkWT",
+  "tags": []
+}
