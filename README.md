@@ -1,9 +1,30 @@
 # AI Instagram Post Scheduler
 
-An AI-powered Instagram content scheduling and automation project.
-Built using n8n for automated social media workflows.
-Generates engaging captions and content with AI.
-Schedules Instagram posts automatically.
-Uses Instagram Graph API for publishing.
-Includes the complete n8n workflow in JSON format.
-Documentation and workflow screenshots are also included.
+An AI-powered Instagram content scheduling and automation project built with **n8n**.
+
+## Features
+
+* 🤖 AI-generated Instagram captions and content
+* 📅 Automatic post scheduling
+* 📸 Instagram post publishing through Instagram Graph API
+* 🔄 Automated n8n workflow
+* 📝 Complete workflow documentation
+* 📂 Workflow JSON file included
+* 🖼️ Screenshots of the workflow included
+
+## Project Files
+
+* `n8n/INSTAGRAM POST.json` — Complete n8n automation workflow
+* `n8n/POST SCHEDULE.docx` — Project documentation
+* `n8n/SCREEN SHOT.docx` — Workflow screenshots
+
+## Technologies
+
+* n8n
+* AI / LLM APIs
+* Instagram Graph API
+* GitHub
+
+## Purpose
+
+This project automates the process of creating, scheduling, and publishing Instagram posts using AI and n8n automation.
